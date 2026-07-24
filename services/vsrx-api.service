@@ -1,0 +1,26 @@
+[Unit]
+Description=VSR-X Hybrid local video subtitle removal API
+After=network.target
+
+[Service]
+Type=simple
+User=vsrx
+Group=vsrx
+WorkingDirectory=/srv/vsrx
+Environment=VSRX_ALLOWED_ROOTS=/srv/vsrx/input:/srv/vsrx/output:/srv/vsrx/masks
+Environment=VSRX_LAMA_MODEL=/srv/vsrx/models/lama.onnx
+Environment=VSRX_PROPAINTER_REPO=/srv/vsrx/models/ProPainter
+ExecStart=/opt/vsrx/.venv/bin/vsrx serve --host 127.0.0.1 --port 8765 --profile balanced
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=90
+KillSignal=SIGINT
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/srv/vsrx/input /srv/vsrx/models
+ReadWritePaths=/srv/vsrx/output /srv/vsrx/work
+
+[Install]
+WantedBy=multi-user.target

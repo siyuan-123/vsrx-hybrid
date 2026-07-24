@@ -1,0 +1,31 @@
+profile: quality
+ocr:
+  retry_tier: medium
+tracking:
+  detection_stride_stable: 2
+  detection_stride_static: 4
+mask_generation:
+  temporal_union:
+    radius_frames: 2
+motion_analysis:
+  local_flow:
+    default: opencv_dis_medium
+    auto_trigger_error: 0.075
+    auto_min_registration_score: 0.90
+clean_plate:
+  reference_window_seconds:
+    default_each_side: 1.30
+    max_each_side: 2.00
+  max_reference_frames_each_side: 48
+  max_selected_reference_frames: 12
+routing:
+  tbe_only:
+    min_coverage: 0.94
+    min_mean_confidence: 0.82
+video_inpainting:
+  propainter:
+    default_chunk_frames: 40
+    max_chunk_frames: 56
+quality_control:
+  temporal_flicker:
+    max_ratio_to_background_ring: 2.0

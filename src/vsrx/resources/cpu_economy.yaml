@@ -1,0 +1,16 @@
+profile: cpu_economy
+ocr:
+  default_tier: tiny
+  backend_order: [openvino, onnxruntime_cpu]
+scheduler:
+  cpu_analysis_workers: 1
+  cpu_tbe_workers: 1
+video_inpainting:
+  propainter:
+    isolated_worker_process: false
+  sttn:
+    enabled: false
+spatial_inpainting:
+  primary: opencv_telea
+quality_control:
+  max_automatic_attempts_per_segment: 3

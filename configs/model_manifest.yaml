@@ -1,0 +1,74 @@
+schema_version: 1
+research_snapshot: 2026-07-23
+models:
+  ppocr_v6_tiny_det:
+    role: cpu_economy_text_detector
+    source: https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv6/det/PP-OCRv6_det_tiny.onnx
+    runtime: rapidocr_3.9.2_onnxruntime
+    license: verify_with_downloaded_weight
+    filename: PP-OCRv6_det_tiny.onnx
+    bytes: 1829618
+    sha256: f42c0fbd294d95eac1a550e131b277dac97462c8025fa4b6c3cec1b7894bd3d5
+  ppocr_v6_small_det:
+    role: default_text_detector
+    source: https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv6/det/PP-OCRv6_det_small.onnx
+    runtime: rapidocr_3.9.2_onnxruntime
+    license: verify_with_downloaded_weight
+    filename: PP-OCRv6_det_small.onnx
+    bytes: 9929594
+    sha256: 090f04abcd9d9a7498bc4ebf677e4cb9bdce1fe4197ddb7e529f1ef44e1ff94f
+  ppocr_v6_medium_det:
+    role: localized_detection_retry
+    source: https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv6/det/PP-OCRv6_det_medium.onnx
+    runtime: rapidocr_3.9.2_onnxruntime
+    license: verify_with_downloaded_weight
+    filename: PP-OCRv6_det_medium.onnx
+    bytes: 62119454
+    sha256: 92078b7355007ccfffcd4c8cd441a3afd4538904d06881b29a155e1e679907c2
+  lama:
+    role: residual_hole_inpainting
+    source: https://huggingface.co/Carve/LaMa-ONNX/resolve/main/lama_fp32.onnx
+    upstream_source: https://github.com/advimman/lama
+    runtime: onnxruntime
+    license: Apache-2.0
+    bytes: 208044816
+    sha256: 1faef5301d78db7dda502fe59966957ec4b79dd64e16f03ed96913c7a4eb68d6
+  mi_gan:
+    role: optional_cpu_economy_inpainting
+    source: https://huggingface.co/andraniksargsyan/migan/resolve/main/migan_pipeline_v2.onnx
+    upstream_source: https://github.com/Picsart-AI-Research/MI-GAN
+    runtime: onnxruntime
+    license: verify_repository_and_weight
+    bytes: 28079181
+    sha256: 6f1f3530a1a2324b19752018ce756088b07973cda8d7d890034ace5c8a48c40b
+  propainter_official:
+    role: hard_roi_video_inpainting
+    source: https://github.com/sczhou/ProPainter
+    git_commit: e870e79321c31b733e2031af5aa2fb1fe3ac7eec
+    runtime: isolated_pytorch_cuda_worker
+    license: noncommercial_research_only_unless_separately_authorized
+    files:
+      weights/ProPainter.pth:
+        bytes: 157780510
+        sha256: 12c070c4b48f374c91d8a2a17851140b85c159621080989f9e191bbc18bd6591
+      weights/recurrent_flow_completion.pth:
+        bytes: 20348681
+        sha256: 22939a1a7900da878dbe1ccd011d646b1bfb30b8290039d8ff0e0c2fefbfd283
+      weights/raft-things.pth:
+        bytes: 21108000
+        sha256: fcfa4125d6418f4de95d84aec20a3c5f4e205101715a79f193243c186ac9a7e1
+  sttn:
+    role: emergency_low_vram_fallback
+    source: https://drive.google.com/uc?id=1ZAMV8547wmZylKRt5qR_tC5VlosXD4Wv
+    upstream_source: https://github.com/researchmm/STTN
+    git_commit: f39f62c5bbbe3e3eba084c487353a2c651bfdcde
+    runtime: isolated_pytorch_worker
+    license: MIT
+    bytes: 66252587
+    sha256: 25b0c2c30042d82efd1893bd42ec726764262d94115393a1718f8d65d2a7817b
+future_plugins:
+  sedit:
+    role: future_mask_free_subtitle_removal
+    source: https://zheng222.github.io/SEDiT_project/
+    status: do_not_make_default_until_code_weights_and_consumer_hardware_benchmarks_are_available
+

@@ -1,0 +1,29 @@
+profile: fast
+subtitle_discovery:
+  full_frame_sample_interval_seconds: 1.25
+  periodic_full_frame_rescan_seconds: 12.0
+tracking:
+  detection_stride_stable: 6
+  detection_stride_static: 10
+motion_analysis:
+  local_flow:
+    default: opencv_dis_ultrafast
+    forward_backward_check: false
+    auto_trigger_error: 0.14
+    auto_min_registration_score: 0.72
+clean_plate:
+  reference_window_seconds:
+    default_each_side: 0.60
+  max_reference_frames_each_side: 18
+  max_selected_reference_frames: 6
+routing:
+  tbe_only:
+    min_coverage: 0.86
+    min_mean_confidence: 0.70
+video_inpainting:
+  propainter:
+    default_chunk_frames: 24
+    max_chunk_frames: 32
+quality_control:
+  residual_text:
+    detector_tier: small

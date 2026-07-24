@@ -1,0 +1,26 @@
+services:
+  vsrx:
+    build: .
+    ports:
+      - "127.0.0.1:8765:8765"
+    environment:
+      VSRX_ALLOWED_ROOTS: /data
+      VSRX_LAMA_MODEL: /data/models/lama.onnx
+      VSRX_PROPAINTER_REPO: /data/models/ProPainter
+      VSRX_STTN_REPO: /data/models/STTN
+      VSRX_STTN_CHECKPOINT: /data/models/STTN/checkpoints/sttn.pth
+    volumes:
+      - ./input:/data/input:ro
+      - ./output:/data/output
+      - ./work:/data/work
+      - ./models:/data/models:ro
+    command:
+      - vsrx
+      - serve
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8765"
+      - --profile
+      - balanced
+    restart: unless-stopped

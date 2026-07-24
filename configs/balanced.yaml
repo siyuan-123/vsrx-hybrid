@@ -1,0 +1,411 @@
+# VSR-X Hybrid Reference Configuration
+# Research snapshot: 2026-07-20
+# Reference target: 1080p long-form batch processing, 8-12 GB NVIDIA GPU,
+# 16-32 GB system RAM. All thresholds are engineering defaults and must be
+# calibrated against the project's golden benchmark set before release.
+
+schema_version: 1
+profile: balanced                     # fast | balanced | quality | cpu_economy
+
+runtime:
+  work_dir: ./work
+  output_dir: ./output
+  state_db: ./work/vsrx.sqlite3
+  log_level: INFO
+  deterministic: true
+  random_seed: 20260720
+  fail_on_unknown_model_hash: true
+  keep_failed_artifacts: true
+  keep_success_intermediates: false
+  max_disk_gb: 500
+  cancellation_poll_ms: 250
+
+input:
+  recursive: true
+  extensions: [mp4, mkv, mov, m4v, avi, webm, ts, m2ts]
+  handle_soft_subtitles: remove        # keep | remove | extract
+  preserve_all_audio_streams: true
+  preserve_attachments: true
+  preserve_chapters: true
+  preserve_metadata: true
+  preserve_vfr: true
+  preserve_pts: true
+  preserve_hdr_metadata: true
+  reject_drm: true
+  auto_deinterlace: true
+  deinterlace_filter: yadif             # yadif | bwdif
+
+probe:
+  ffprobe_path: ffprobe
+  ffmpeg_path: ffmpeg
+  timeout_seconds: 60
+  hash_mode: fast_then_full             # none | fast | full | fast_then_full
+
+scene_detection:
+  enabled: true
+  engine: pyscenedetect_adaptive
+  adaptive_threshold: 3.0
+  min_scene_len_frames: 10
+  rolling_window_frames: 2
+  min_content_val: 15.0
+  confirm_with_histogram: true
+  histogram_threshold: 0.42
+  detect_fades: true
+  fade_min_frames: 4
+  never_reference_across_cut: true
+
+subtitle_discovery:
+  mode: automatic_multi_roi             # fixed_roi | automatic_multi_roi | aggressive_overlay
+  full_frame_sample_interval_seconds: 0.75
+  sample_first_seconds: 20
+  sample_middle_windows: 3
+  sample_last_seconds: 20
+  max_rois: 4
+  roi_padding_ratio: 0.025
+  periodic_full_frame_rescan_seconds: 8.0
+  detect_vertical_text: true
+  detect_rotated_text: true
+  protect_scene_text: true
+  protect_logos: true
+  default_bottom_band_hint: 0.38
+  uncertain_track_policy: review        # protect | remove | review
+
+ocr:
+  provider: rapidocr
+  task: detection_only
+  backend_order: [openvino, onnxruntime_cuda, onnxruntime_cpu]
+  model_family: PP-OCRv6
+  default_tier: small
+  economy_tier: tiny
+  retry_tier: medium
+  input_limit_side_len: 736
+  input_limit_type: max
+  det_threshold: 0.30
+  box_threshold: 0.50
+  unclip_ratio: 1.60
+  use_detector_dilation: true
+  score_mode: fast
+  return_probability_map: true
+  inference_threads: 4
+  recognition_enabled: false
+  medium_retry_conditions:
+    low_track_confidence: 0.62
+    residual_text_after_cleanup: true
+    stylized_text_probability: 0.65
+    severe_compression_score: 0.70
+
+tracking:
+  enabled: true
+  association: hungarian_kalman
+  max_gap_frames: 8
+  min_track_frames: 3
+  iou_weight: 0.35
+  center_distance_weight: 0.20
+  height_ratio_weight: 0.15
+  angle_weight: 0.10
+  appearance_weight: 0.20
+  max_center_distance_ratio: 0.12
+  max_height_change_ratio: 0.45
+  propagate_between_detections: optical_flow_then_kalman
+  detection_stride_stable: 4
+  detection_stride_unstable: 1
+  detection_stride_static: 7
+  karaoke_force_stride: 1
+  moving_text_force_stride: 1
+  reset_on_scene_cut: true
+
+subtitle_track_classifier:
+  auto_remove_threshold: 0.62
+  review_threshold: 0.45
+  weights:
+    detector_confidence: 0.18
+    screen_coordinate_stability: 0.18
+    subtitle_cadence: 0.16
+    layout_prior: 0.12
+    local_contrast: 0.10
+    overlay_motion_decoupling: 0.16
+    optional_audio_vad_alignment: 0.10
+  penalties:
+    logo_persistence: 0.22
+    scene_motion_coupling: 0.28
+    tiny_corner_mark: 0.12
+    long_unchanged_content: 0.15
+  audio_vad:
+    enabled: false
+    engine: silero_vad
+    only_for_uncertain_tracks: true
+
+mask_generation:
+  base_source: detector_probability_map
+  fallback_source: polygons
+  min_probability: 0.28
+  polygon_unclip_ratio: 1.45
+  confidence_weighted_dilation: true
+  dilation:
+    formula: text_height_ratio
+    text_height_fraction: 0.12
+    min_px_720p: 3
+    max_px_720p: 7
+    min_px_1080p: 5
+    max_px_1080p: 11
+    retry_increment_px: 3
+  include_outline: true
+  include_shadow: true
+  include_glow: true
+  include_background_panel: auto
+  panel_mode_requires_track_score: 0.72
+  color_space: Lab
+  connected_component_seed_intersection: true
+  temporal_union:
+    enabled: true
+    radius_frames: 1
+    warp_to_current_frame: true
+  morphology:
+    close_kernel_px: 3
+    fill_holes: true
+    remove_components_below_px: 6
+  feather:
+    enabled: true
+    radius_px_720p: 3
+    radius_px_1080p: 5
+  export_debug_masks: false
+
+motion_analysis:
+  global_registration:
+    enabled: true
+    method_order: [phase_translation, ecc_affine, orb_ransac_affine, identity]
+    downscale_max_side: 960
+    exclude_masked_regions: true
+    ecc_iterations: 50
+    ecc_epsilon: 0.0001
+    fast_accept_error: 0.095
+    fast_accept_valid_fraction: 0.70
+    expensive_accept_error: 0.075
+    phase_max_shift_ratio: 0.35
+    compose_adjacent_transforms: true
+    anchor_stride_frames: 12
+    direct_fallback_score_below: 0.52
+  local_flow:
+    default: opencv_dis_fast
+    quality_retry: opencv_dis_medium
+    gpu_optional: raft_small
+    roi_only: true
+    context_padding_px_1080p: 96
+    forward_backward_check: true
+    fb_error_threshold_px: 1.8
+    auto_trigger_error: 0.105
+    auto_min_registration_score: 0.82
+  motion_score:
+    low: 0.22
+    high: 0.65
+
+clean_plate:
+  enabled: true
+  reference_window_seconds:
+    min_each_side: 0.40
+    default_each_side: 0.90
+    max_each_side: 1.50
+  max_reference_frames_each_side: 36
+  max_selected_reference_frames: 8
+  temporal_decay_tau_seconds: 0.85
+  minimum_valid_references_per_pixel: 3
+  preferred_valid_references_per_pixel: 5
+  reference_scoring:
+    temporal_distance_weight: 0.15
+    flow_consistency_weight: 0.30
+    photometric_ring_weight: 0.25
+    gradient_ring_weight: 0.15
+    exposure_availability_weight: 0.15
+  exposure_compensation:
+    enabled: true
+    model: per_channel_affine
+    fit_on_unmasked_ring: true
+  fusion: weighted_median             # weighted_median | trimmed_mean | best_reference
+  trimmed_mean_fraction: 0.20
+  reject_dynamic_occlusions: true
+  output_coverage_map: true
+  output_confidence_map: true
+
+routing:
+  granularity: temporal_segment       # frame | temporal_segment | shot
+  segment_min_frames: 8
+  segment_max_frames: 96
+  no_op_when_mask_empty: true
+  tbe_only:
+    min_coverage: 0.90
+    min_mean_confidence: 0.76
+    max_flicker_risk: 0.38
+  tbe_plus_spatial:
+    min_coverage: 0.55
+    max_residual_mask_ratio_of_roi: 0.08
+    max_residual_component_equivalent_px_1080p: 180
+  official_propainter:
+    trigger_when_coverage_below: 0.55
+    trigger_when_flow_confidence_below: 0.52
+    trigger_when_foreground_crossing_score_above: 0.35
+    trigger_when_mask_ratio_of_frame_above: 0.06
+  low_vram_fallback: sttn
+  review_when:
+    mask_ratio_of_frame_above: 0.18
+    subtitle_track_confidence_below: 0.45
+    shot_frames_below: 5
+    severe_motion_blur_score_above: 0.82
+  future_mask_free_plugin: sedit
+  future_plugin_enabled: false
+
+spatial_inpainting:
+  primary: lama_onnx
+  micro_hole_engine: opencv_telea
+  economy_optional: migan
+  telea_max_component_px_1080p: 24
+  lama:
+    provider_order: [onnxruntime_cuda, openvino, onnxruntime_cpu]
+    tile_size: 512
+    tile_overlap: 64
+    fp16_on_cuda: true
+    roi_padding_px_1080p: 64
+    only_fill_residual_mask: true
+  migan:
+    enabled: false
+    input_size: 512
+    fp16_on_cuda: true
+    use_only_for_residual_ratio_below: 0.03
+
+video_inpainting:
+  primary_fallback: official_propainter
+  propainter:
+    process_roi_only: true
+    fp16: true
+    roi_padding_px_1080p: 72
+    min_chunk_frames: 16
+    default_chunk_frames: 32
+    max_chunk_frames: 48
+    overlap_frames: 8
+    neighbor_length: 6
+    ref_stride: 12
+    subvideo_length: 32
+    adaptive_vram_calibration: true
+    vram_safety_margin_mb: 700
+    preserve_outside_mask_exactly: true
+    lazy_load: true
+    isolated_worker_process: true
+    worker_idle_unload_seconds: 180
+  sttn:
+    enabled: true
+    role: emergency_low_vram_fallback
+    neighbor_stride: 10
+    reference_length: 10
+    max_load_frames: 30
+    process_roi_only: true
+  e2fgvi_hq:
+    enabled: false
+    role: experimental_mid_tier
+  heavy_research_plugins:
+    diffueraser: false
+    clear: false
+    svor: false
+    videopainter: false
+
+compositing:
+  operate_in_linear_light_when_possible: true
+  preserve_source_outside_expanded_mask: exact
+  alpha_source: feathered_mask
+  boundary_color_match: local_affine
+  grain_match:
+    enabled: true
+    estimate_from_local_ring: true
+    max_strength: 0.25
+  chroma_subsampling_alignment: true
+
+quality_control:
+  enabled: true
+  every_segment: true
+  residual_text:
+    detector_tier: medium
+    compare_before_after_probability: true
+    max_output_text_probability: 0.24
+    minimum_probability_drop: 0.55
+  temporal_flicker:
+    flow_aligned: true
+    max_ratio_to_background_ring: 2.4
+    max_p95_luma_error: 0.085
+  boundary_seam:
+    ring_width_px_1080p: 8
+    max_median_delta_e_2000: 5.5
+    max_gradient_jump_ratio: 2.2
+  preservation:
+    outside_mask_must_equal_source: true
+    allowed_numeric_epsilon_8bit: 1
+  sharpness:
+    min_laplacian_ratio_to_ring: 0.42
+    max_laplacian_ratio_to_ring: 2.4
+  retry_ladder:
+    - expand_mask
+    - upgrade_flow_and_references
+    - residual_lama
+    - official_propainter
+    - manual_review
+  max_automatic_attempts_per_segment: 4
+  generate_review_contact_sheet: true
+  review_sheet_max_segments: 64
+
+scheduler:
+  database: sqlite
+  cpu_probe_workers: 2
+  cpu_analysis_workers: 2
+  cpu_tbe_workers: 2
+  gpu_heavy_workers_per_gpu: 1
+  encoder_workers: 1
+  bounded_queue_size: 8
+  prefetch_frames: 16
+  gpu_memory_poll_interval_ms: 500
+  reserve_gpu_memory_mb: 700
+  retry_transient_failures: 3
+  retry_backoff_seconds: [5, 15, 45]
+  checkpoint_each_segment: true
+  resume_policy: exact_config_and_model_hash
+
+intermediate_storage:
+  primary_transport: shared_memory_ring
+  checkpoint_codec: ffv1
+  mask_codec: ffv1_gray
+  mask_manifest_timebase: microseconds
+  use_png_sequences: false
+  atomic_writes: true
+  fsync_state_transitions: true
+
+encoding:
+  video_codec: auto                  # auto | h264 | h265 | av1 | copy_when_unchanged
+  hw_encoder_order: [nvenc, qsv, vaapi, videotoolbox, software]
+  h264_encoder: h264_nvenc
+  h265_encoder: hevc_nvenc
+  av1_encoder: av1_nvenc
+  quality_mode: constant_quality
+  cq_h264: 19
+  cq_h265: 21
+  cq_av1: 28
+  pixel_format_policy: preserve_when_supported
+  single_final_lossy_encode: true
+  audio_codec: copy
+  subtitle_stream_policy: drop
+  mux_queue_size: 4096
+
+observability:
+  json_logs: true
+  per_stage_timings: true
+  collect_peak_rss: true
+  collect_peak_vram: true
+  model_route_histogram: true
+  qc_failure_histogram: true
+  emit_metrics_json: true
+  save_random_visual_samples: 12
+
+acceptance_targets:
+  silent_failure_count: 0
+  whole_video_loss_on_oom: 0
+  resumable_after_process_crash: true
+  source_change_outside_mask: 0
+  median_manual_review_rate_max: 0.05
+  median_heavy_model_frame_ratio_target_max: 0.20
+  target_peak_vram_mb_on_8gb_profile: 7300
+  benchmark_required_before_release: true

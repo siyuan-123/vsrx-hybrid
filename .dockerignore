@@ -1,0 +1,14 @@
+.venv
+.git
+.github
+.pytest_cache
+.ruff_cache
+__pycache__
+*.pyc
+work
+output
+input
+models
+dist
+build
+*.zip
