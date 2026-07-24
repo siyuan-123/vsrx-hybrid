@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 
@@ -68,7 +69,18 @@ def test_verify_propainter_pinned_weight_files(tmp_path: Path, fast_config) -> N
     assert result["propainter_official"]["files"]["weights/model.pth"]["verified"] is True
 
 
-def test_status_resolves_optional_backends_from_models_root(tmp_path: Path, fast_config) -> None:
+def test_status_resolves_optional_backends_from_models_root(
+    tmp_path: Path, fast_config, monkeypatch
+) -> None:
+    for name in (
+        "VSRX_LAMA_MODEL",
+        "VSRX_MIGAN_MODEL",
+        "VSRX_PROPAINTER_REPO",
+        "VSRX_STTN_REPO",
+        "VSRX_STTN_CHECKPOINT",
+    ):
+        monkeypatch.delenv(name, raising=False)
+
     root = tmp_path / "models"
     root.mkdir()
     (root / "lama.onnx").write_bytes(b"model")
@@ -81,11 +93,19 @@ def test_status_resolves_optional_backends_from_models_root(tmp_path: Path, fast
 
     status = ModelManager(fast_config, root).status()
 
+    assert status["paths"] == {
+        "lama": str(root / "lama.onnx"),
+        "migan": str(root / "migan.onnx"),
+        "propainter": str(root / "ProPainter"),
+        "sttn": str(root / "STTN"),
+        "sttn_checkpoint": str(root / "STTN/checkpoints/sttn.pth"),
+    }
+    onnxruntime_available = importlib.util.find_spec("onnxruntime") is not None
     assert status["inpainting_backends"] == {
         "telea": True,
         "navier_stokes": True,
-        "lama": True,
-        "migan": True,
+        "lama": onnxruntime_available,
+        "migan": onnxruntime_available,
         "propainter": True,
         "sttn": True,
     }
